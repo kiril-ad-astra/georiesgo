@@ -1,270 +1,384 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeoRiesgo Caracas – Sistema de Alerta Temprana</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoRiesgo Caracas</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --azul:#003865;--rojo:#D52B1E;--gold:#C8A951;
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --bd:#30363d;--txt:#e6edf3;--mut:#8b949e;
+  --sw:400px;--hh:54px;--fh:32px;
+}
+html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;overflow:hidden}
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+/* HEADER */
+header{position:fixed;inset:0 0 auto 0;height:var(--hh);background:linear-gradient(90deg,#001f3d,var(--azul));border-bottom:2px solid var(--rojo);z-index:999;display:flex;align-items:center;padding:0 18px;gap:12px}
+.logo{width:32px;height:32px;flex-shrink:0}
+.htitle{font-family:'Rajdhani',sans-serif;font-size:19px;font-weight:700;color:#fff}
+.htitle span{color:var(--gold)}
+.hsub{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.07em;margin-top:1px}
+.hbadge{margin-left:auto;padding:4px 12px;border-radius:20px;font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:.07em;border:1px solid;display:flex;align-items:center;gap:6px}
+.badge-sim{background:rgba(255,193,7,.15);border-color:#ffc107;color:#ffd54f}
+.badge-real{background:rgba(40,167,69,.15);border-color:#28a745;color:#4cbb6e}
+.dot{width:6px;height:6px;border-radius:50%;animation:blink 1.4s infinite}
+.badge-sim .dot{background:#ffc107}.badge-real .dot{background:#28a745}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+#clock{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;color:var(--gold);margin-left:14px;letter-spacing:.1em}
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+/* LAYOUT */
+.layout{display:flex;position:fixed;top:var(--hh);bottom:var(--fh);left:0;right:0}
 
-  <link rel="stylesheet" href="/static/css/style.css"/>
+/* SIDEBAR */
+.sidebar{width:var(--sw);flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:3px}.sidebar::-webkit-scrollbar-thumb{background:var(--bd)}
+.section{padding:14px 16px;border-bottom:1px solid var(--bd)}
+.slabel{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);margin-bottom:10px}
+
+/* Zone radios */
+.zcard{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border:1px solid var(--bd);border-radius:7px;cursor:pointer;margin-bottom:6px;transition:.15s}
+.zcard:hover{border-color:#0a6bb5}
+.zcard input{display:none}
+.zcard.sel{border-color:var(--gold);background:rgba(200,169,81,.1)}
+.zbadge{padding:2px 7px;border-radius:3px;font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;flex-shrink:0}
+.b-bajo{background:rgba(76,175,80,.2);color:#66bb6a}.b-mod{background:rgba(255,215,0,.2);color:#ffd54f}
+.b-alto{background:rgba(255,140,0,.2);color:#ffb347}.b-crit{background:rgba(255,68,68,.2);color:#ff6b6b}
+.zname{font-weight:600;font-size:13px}.zdesc{font-size:11px;color:var(--mut)}
+
+/* Clima grid */
+.cg{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.cc{cursor:pointer;display:flex;flex-direction:column;align-items:center;padding:9px 4px;background:var(--bg3);border:1px solid var(--bd);border-radius:7px;transition:.15s}
+.cc input{display:none}.cc:hover{border-color:#0a6bb5}.cc.sel{border-color:var(--gold);background:rgba(200,169,81,.12)}
+.ci{font-size:18px;margin-bottom:3px}.cn{font-size:11px;font-weight:600}.cm{font-size:10px;color:var(--mut)}
+
+/* Analyze button */
+.btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--rojo),#a81f14);border:none;border-radius:8px;color:#fff;font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;letter-spacing:.05em;cursor:pointer;transition:.2s;box-shadow:0 4px 16px rgba(213,43,30,.4)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(213,43,30,.55)}
+.btn:active{transform:translateY(0)}.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+
+/* Result */
+.result{border:1px solid var(--bd);border-radius:8px;overflow:hidden;background:var(--bg3);animation:up .3s ease}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.rbar{height:4px}
+.rbody{padding:14px;display:flex;flex-direction:column;gap:10px}
+.rrow{display:flex;align-items:center;gap:10px}
+.rico{font-size:26px;flex-shrink:0}
+.rnivel{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700}
+.rzona{font-size:11px;color:var(--mut)}
+.rprob{margin-left:auto;font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700}
+.rtrack{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.rfill{height:100%;border-radius:3px;width:0;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.raccion{padding:9px 12px;border-radius:6px;border-left:3px solid var(--rojo);background:rgba(213,43,30,.08)}
+.ralabel{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut)}
+.ratext{font-weight:600;font-size:13px}
+.rtexto{font-size:12px;color:var(--mut);line-height:1.6}
+.rmeta{display:flex;justify-content:space-between;font-size:10px;color:#484f58;padding-top:6px;border-top:1px solid var(--bd)}
+
+/* MAP */
+.mapsec{flex:1;position:relative}
+#map{width:100%;height:100%}
+.legend{position:absolute;bottom:20px;right:14px;background:rgba(13,17,23,.9);border:1px solid var(--bd);border-radius:8px;padding:10px 13px;z-index:500;backdrop-filter:blur(6px)}
+.legend b{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:7px}
+.li{display:flex;align-items:center;gap:7px;font-size:12px;margin:3px 0}
+.ld{width:11px;height:11px;border-radius:2px;flex-shrink:0}
+
+/* Toast */
+.toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 18px;background:rgba(13,17,23,.93);border:1px solid var(--bd);border-radius:24px;backdrop-filter:blur(10px);z-index:600;max-width:460px;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.toast-ico{font-size:20px;flex-shrink:0}
+.toast-title{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;white-space:nowrap}
+.toast-sub{font-size:11px;color:var(--mut)}
+
+/* Overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:900;backdrop-filter:blur(3px)}
+.obox{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:32px 44px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.spin{width:38px;height:38px;border:3px solid var(--bd);border-top-color:var(--rojo);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.otext{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;color:var(--mut);letter-spacing:.05em}
+
+footer{position:fixed;bottom:0;left:0;right:0;height:var(--fh);background:var(--azul);border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,.45);z-index:999}
+.hidden{display:none!important}
+
+/* Leaflet dark */
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--bg2)!important;color:var(--txt)!important;border:1px solid var(--bd)!important}
+.leaflet-control-zoom a{background:var(--bg2)!important;color:var(--txt)!important;border-color:var(--bd)!important}
+.leaflet-control-zoom a:hover{background:var(--bg3)!important}
+</style>
 </head>
 <body>
 
-<!-- ══════════════════ HEADER ══════════════════ -->
-<header class="site-header">
-  <div class="header-inner">
-    <div class="header-brand">
-      <div class="brand-icon">
-        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="20,4 36,34 4,34" fill="#D52B1E" opacity="0.9"/>
-          <polygon points="20,10 32,32 8,32" fill="#003865" opacity="0.5"/>
-          <circle cx="20" cy="26" r="3" fill="white"/>
-        </svg>
-      </div>
-      <div class="brand-text">
-        <span class="brand-title">GeoRiesgo <span class="brand-accent">Caracas</span></span>
-        <span class="brand-sub">Sistema de Alerta Temprana · Municipio Libertador</span>
-      </div>
-    </div>
-    <div class="header-status">
-      <div class="status-pill {{ 'status-real' if using_real_model else 'status-sim' }}">
-        <span class="status-dot"></span>
-        {% if using_real_model %}CNN-LSTM ACTIVO{% else %}MODO SIMULACIÓN{% endif %}
-      </div>
-      <div class="header-time" id="headerClock">--:--:--</div>
-    </div>
+<header>
+  <svg class="logo" viewBox="0 0 40 40" fill="none">
+    <polygon points="20,4 36,34 4,34" fill="#D52B1E" opacity=".9"/>
+    <polygon points="20,11 31,32 9,32" fill="#003865" opacity=".55"/>
+    <circle cx="20" cy="26" r="3" fill="white"/>
+  </svg>
+  <div>
+    <div class="htitle">GeoRiesgo <span>Caracas</span></div>
+    <div class="hsub">SISTEMA DE ALERTA TEMPRANA · MUNICIPIO LIBERTADOR</div>
   </div>
+  <div class="hbadge {{ 'badge-real' if has_model else 'badge-sim' }}">
+    <span class="dot"></span>
+    {{ 'CNN-LSTM ACTIVO' if has_model else 'MODO SIMULACION' }}
+  </div>
+  <div id="clock">--:--:--</div>
 </header>
 
-<!-- ══════════════════ MAIN LAYOUT ══════════════════ -->
-<main class="app-layout">
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
 
-  <!-- ── SIDEBAR ── -->
-  <aside class="sidebar">
-
-    <!-- Tabs -->
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="analisis">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a7 7 0 100 14A7 7 0 009 2zm0 1a6 6 0 110 12A6 6 0 019 3zm.75 3.25a.75.75 0 00-1.5 0v3.5c0 .199.079.39.22.53l2 2a.75.75 0 101.06-1.06l-1.78-1.78V6.25z"/></svg>
-        Análisis
-      </button>
-      <button class="tab-btn" data-tab="info">
-        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 1.5a6.5 6.5 0 110 13 6.5 6.5 0 010-13zM10 8a1 1 0 00-1 1v4a1 1 0 002 0V9a1 1 0 00-1-1zm0-3a1 1 0 100 2 1 1 0 000-2z"/></svg>
-        Info
-      </button>
+    <!-- ZONA -->
+    <div class="section">
+      <div class="slabel">📍 Zona Geografica</div>
+      <label class="zcard sel" id="z-valle_central">
+        <input type="radio" name="zona" value="valle_central" checked>
+        <div><div class="zname">Valle Central</div><div class="zdesc">Areas planas · Centro urbano</div></div>
+        <span class="zbadge b-bajo">BAJO</span>
+      </label>
+      <label class="zcard" id="z-ladera_vulnerable">
+        <input type="radio" name="zona" value="ladera_vulnerable">
+        <div><div class="zname">Laderas Medias</div><div class="zdesc">Antimano, Caricuao · 25-45°</div></div>
+        <span class="zbadge b-mod">MOD</span>
+      </label>
+      <label class="zcard" id="z-cerro_pendiente">
+        <input type="radio" name="zona" value="cerro_pendiente">
+        <div><div class="zname">Cerros Altos</div><div class="zdesc">El Paraiso, San Agustin · +45°</div></div>
+        <span class="zbadge b-alto">ALTO</span>
+      </label>
+      <label class="zcard" id="z-quebrada">
+        <input type="radio" name="zona" value="quebrada">
+        <div><div class="zname">Cercania a Quebradas</div><div class="zdesc">Quebrada Seca, Anauco</div></div>
+        <span class="zbadge b-crit">CRIT</span>
+      </label>
+      <label class="zcard" id="z-seguro">
+        <input type="radio" name="zona" value="seguro">
+        <div><div class="zname">Zonas Consolidadas</div><div class="zdesc">Chacao, El Rosal · Mitigadas</div></div>
+        <span class="zbadge b-bajo">MIN</span>
+      </label>
     </div>
 
-    <!-- Panel: Análisis -->
-    <div class="tab-panel active" id="panel-analisis">
-
-      <!-- Zona -->
-      <div class="form-section">
-        <div class="form-section-label">
-          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a5 5 0 100 10A5 5 0 008 1zm0 1.5a3.5 3.5 0 110 7 3.5 3.5 0 010-7zM8 13c-2.67 0-8 1.34-8 4v1h16v-1c0-2.66-5.33-4-8-4z"/></svg>
-          Zona Geográfica
-        </div>
-        <div class="radio-group" id="zonaGroup">
-          <label class="radio-card" data-risk="bajo">
-            <input type="radio" name="zona" value="valle_central" checked/>
-            <div class="radio-card-inner">
-              <span class="rc-name">Valle Central</span>
-              <span class="rc-desc">Áreas planas · Riesgo base bajo</span>
-              <span class="rc-badge rc-bajo">BAJO</span>
-            </div>
-          </label>
-          <label class="radio-card" data-risk="moderado">
-            <input type="radio" name="zona" value="ladera_vulnerable"/>
-            <div class="radio-card-inner">
-              <span class="rc-name">Laderas Medias</span>
-              <span class="rc-desc">Antímano, Caricuao · 25-45°</span>
-              <span class="rc-badge rc-moderado">MODERADO</span>
-            </div>
-          </label>
-          <label class="radio-card" data-risk="alto">
-            <input type="radio" name="zona" value="cerro_pendiente"/>
-            <div class="radio-card-inner">
-              <span class="rc-name">Cerros Altos</span>
-              <span class="rc-desc">El Paraíso, San Agustín · &gt;45°</span>
-              <span class="rc-badge rc-alto">ALTO</span>
-            </div>
-          </label>
-          <label class="radio-card" data-risk="critico">
-            <input type="radio" name="zona" value="quebrada"/>
-            <div class="radio-card-inner">
-              <span class="rc-name">Cercanía a Quebradas</span>
-              <span class="rc-desc">Quebrada Seca, Anauco</span>
-              <span class="rc-badge rc-critico">CRÍTICO</span>
-            </div>
-          </label>
-          <label class="radio-card" data-risk="bajo">
-            <input type="radio" name="zona" value="seguro"/>
-            <div class="radio-card-inner">
-              <span class="rc-name">Zonas Consolidadas</span>
-              <span class="rc-desc">Chacao, El Rosal · Mitigadas</span>
-              <span class="rc-badge rc-bajo">MÍNIMO</span>
-            </div>
-          </label>
-        </div>
-      </div>
-
-      <!-- Clima -->
-      <div class="form-section">
-        <div class="form-section-label">
-          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9-3.5a1 1 0 11-2 0 1 1 0 012 0zM8 6.75a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 018 6.75z"/></svg>
-          Escenario Climático
-        </div>
-        <div class="clima-grid">
-          <label class="clima-card active-clima" data-clima="seco">
-            <input type="radio" name="clima" value="seco"/>
-            <span class="clima-icon">☀️</span>
-            <span class="clima-name">Seco</span>
-            <span class="clima-mm">&lt; 5 mm</span>
-          </label>
-          <label class="clima-card" data-clima="moderado">
-            <input type="radio" name="clima" value="moderado" checked/>
-            <span class="clima-icon">🌤️</span>
-            <span class="clima-name">Moderado</span>
-            <span class="clima-mm">15-25 mm</span>
-          </label>
-          <label class="clima-card" data-clima="intenso">
-            <input type="radio" name="clima" value="intenso"/>
-            <span class="clima-icon">⛈️</span>
-            <span class="clima-name">Intenso</span>
-            <span class="clima-mm">35-50 mm</span>
-          </label>
-          <label class="clima-card" data-clima="extremo">
-            <input type="radio" name="clima" value="extremo"/>
-            <span class="clima-icon">🌊</span>
-            <span class="clima-name">Extremo</span>
-            <span class="clima-mm">&gt; 80 mm</span>
-          </label>
-          <label class="clima-card" data-clima="creciente">
-            <input type="radio" name="clima" value="creciente"/>
-            <span class="clima-icon">📈</span>
-            <span class="clima-name">Creciente</span>
-            <span class="clima-mm">En aumento</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Botón -->
-      <button class="btn-analyze" id="btnAnalizar">
-        <span class="btn-icon">⚡</span>
-        <span class="btn-text">ANALIZAR RIESGO</span>
-        <span class="btn-sub">Modelo geoespacial · Caracas</span>
-      </button>
-
-      <!-- Resultado -->
-      <div class="result-card hidden" id="resultCard">
-        <div class="result-level-bar" id="resultBar"></div>
-        <div class="result-body">
-          <div class="result-header-row">
-            <span class="result-icon" id="resultIcon">⚠️</span>
-            <div>
-              <div class="result-nivel" id="resultNivel">--</div>
-              <div class="result-zona-name" id="resultZonaNombre">--</div>
-            </div>
-            <div class="result-prob-circle" id="resultProbCircle">
-              <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="#e5e7eb" stroke-width="5"/><circle class="prob-arc" id="probArc" cx="28" cy="28" r="24" fill="none" stroke="#D52B1E" stroke-width="5" stroke-dasharray="150.8" stroke-dashoffset="150.8" stroke-linecap="round" transform="rotate(-90 28 28)"/></svg>
-              <span id="probNum">0%</span>
-            </div>
-          </div>
-
-          <div class="progress-wrap">
-            <div class="progress-track">
-              <div class="progress-fill" id="progressFill"></div>
-            </div>
-          </div>
-
-          <div class="accion-box" id="accionBox">
-            <span class="accion-label">Acción recomendada</span>
-            <span class="accion-text" id="accionText">--</span>
-          </div>
-
-          <div class="explicacion-text" id="explicacionText"></div>
-
-          <div class="result-meta">
-            <span id="resultMetodo"></span>
-            <span id="resultHora"></span>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /panel-analisis -->
-
-    <!-- Panel: Info -->
-    <div class="tab-panel" id="panel-info">
-      <div class="info-block">
-        <h3>Sobre el Sistema</h3>
-        <p>GeoRiesgo Caracas es un sistema de alerta temprana para deslizamientos e inundaciones en el Municipio Libertador, desarrollado con base en datos históricos 2000-2023.</p>
-      </div>
-      <div class="info-block">
-        <h3>Modelo CNN-LSTM</h3>
-        <p>Entrenado con 147 eventos documentados. Fusiona datos satelitales (parches 24×24 px, 4 bandas) con series climáticas horarias (24 h, 5 variables).</p>
-      </div>
-      <div class="info-block">
-        <h3>Leyenda de Riesgo</h3>
-        <div class="legend-grid">
-          <div class="legend-item"><span class="legend-dot" style="background:#4CAF50"></span>BAJO &lt; 30%</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#FFD700"></span>MODERADO 30-50%</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#FF8C00"></span>ALTO 50-70%</div>
-          <div class="legend-item"><span class="legend-dot" style="background:#FF4444"></span>CRÍTICO &gt; 70%</div>
-        </div>
-      </div>
-      <div class="info-block">
-        <h3>Referencias</h3>
-        <p>Protocolos PCV 2021 · IGES 2019 · IMME-UCV · FUNVISIS</p>
+    <!-- CLIMA -->
+    <div class="section">
+      <div class="slabel">🌦️ Escenario Climatico</div>
+      <div class="cg">
+        <label class="cc" id="c-seco"><input type="radio" name="clima" value="seco"><span class="ci">☀️</span><span class="cn">Seco</span><span class="cm">&lt;5mm</span></label>
+        <label class="cc sel" id="c-moderado"><input type="radio" name="clima" value="moderado" checked><span class="ci">🌤️</span><span class="cn">Moderado</span><span class="cm">15-25mm</span></label>
+        <label class="cc" id="c-intenso"><input type="radio" name="clima" value="intenso"><span class="ci">⛈️</span><span class="cn">Intenso</span><span class="cm">35-50mm</span></label>
+        <label class="cc" id="c-extremo"><input type="radio" name="clima" value="extremo"><span class="ci">🌊</span><span class="cn">Extremo</span><span class="cm">&gt;80mm</span></label>
+        <label class="cc" id="c-creciente"><input type="radio" name="clima" value="creciente"><span class="ci">📈</span><span class="cn">Creciente</span><span class="cm">subiendo</span></label>
       </div>
     </div>
 
-  </aside><!-- /sidebar -->
+    <!-- BUTTON -->
+    <div class="section">
+      <button class="btn" id="btnAnalizar">⚡ ANALIZAR RIESGO</button>
+    </div>
 
-  <!-- ── MAP ── -->
-  <section class="map-section">
+    <!-- RESULT -->
+    <div class="section" id="resultSec" style="display:none">
+      <div class="result" id="resultCard">
+        <div class="rbar" id="rbar"></div>
+        <div class="rbody">
+          <div class="rrow">
+            <span class="rico" id="rico">⚠️</span>
+            <div><div class="rnivel" id="rnivel">--</div><div class="rzona" id="rzona">--</div></div>
+            <div class="rprob" id="rprob" style="color:#888">--%</div>
+          </div>
+          <div class="rtrack"><div class="rfill" id="rfill"></div></div>
+          <div class="raccion" id="raccion">
+            <div class="ralabel">Accion recomendada</div>
+            <div class="ratext" id="ratext">--</div>
+          </div>
+          <div class="rtexto" id="rtexto"></div>
+          <div class="rmeta"><span id="rmetodo"></span><span id="rhora"></span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- MAP -->
+  <div class="mapsec">
     <div id="map"></div>
-
-    <!-- Floating legend -->
-    <div class="map-legend">
-      <div class="legend-title">Nivel de Riesgo</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#4CAF50"></span>Bajo</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#FFD700"></span>Moderado</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#FF8C00"></span>Alto</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#FF4444"></span>Crítico</div>
+    <div class="legend">
+      <b>Nivel de Riesgo</b>
+      <div class="li"><div class="ld" style="background:#4CAF50"></div>Bajo</div>
+      <div class="li"><div class="ld" style="background:#FFD700"></div>Moderado</div>
+      <div class="li"><div class="ld" style="background:#FF8C00"></div>Alto</div>
+      <div class="li"><div class="ld" style="background:#FF4444"></div>Critico</div>
     </div>
-
-    <!-- Alert toast -->
-    <div class="map-alert hidden" id="mapAlert">
-      <span class="map-alert-icon" id="mapAlertIcon">⚠️</span>
-      <div>
-        <div class="map-alert-title" id="mapAlertTitle">--</div>
-        <div class="map-alert-sub" id="mapAlertSub">--</div>
-      </div>
+    <div class="toast hidden" id="toast">
+      <span class="toast-ico" id="tIco">⚠️</span>
+      <div><div class="toast-title" id="tTitle">--</div><div class="toast-sub" id="tSub">--</div></div>
     </div>
-  </section>
-
-</main>
-
-<!-- ══════════════════ FOOTER ══════════════════ -->
-<footer class="site-footer">
-  GeoRiesgo Caracas v3.2 &nbsp;·&nbsp; © 2026 UNES &nbsp;·&nbsp;
-  Datos: INAMEH · FUNVISIS · IMME-UCV
-</footer>
-
-<!-- Loading overlay -->
-<div class="loading-overlay hidden" id="loadingOverlay">
-  <div class="loading-box">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Analizando riesgo geoespacial…</div>
   </div>
 </div>
 
-<script src="/static/js/app.js"></script>
+<!-- OVERLAY -->
+<div class="overlay hidden" id="overlay">
+  <div class="obox"><div class="spin"></div><div class="otext">Analizando riesgo geoespacial…</div></div>
+</div>
+
+<footer>GeoRiesgo Caracas v3.3 &nbsp;·&nbsp; © 2026 UNES &nbsp;·&nbsp; Datos: INAMEH · FUNVISIS · IMME-UCV</footer>
+
+<script>
+// ── MAP ────────────────────────────────────────────────────
+const map = L.map('map',{center:[10.500,-66.880],zoom:12});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO', maxZoom:19
+}).addTo(map);
+
+const ZONE_COLORS={valle_central:'#4CAF50',ladera_vulnerable:'#FFD700',cerro_pendiente:'#FF8C00',quebrada:'#FF4444',seguro:'#4CAF50'};
+const ZONES={
+  valle_central:{center:[10.500,-66.880],poly:[[10.485,-66.900],[10.485,-66.860],[10.515,-66.860],[10.515,-66.900]]},
+  ladera_vulnerable:{center:[10.515,-66.895],poly:[[10.500,-66.915],[10.500,-66.875],[10.530,-66.875],[10.530,-66.915]]},
+  cerro_pendiente:{center:[10.530,-66.865],poly:[[10.515,-66.885],[10.515,-66.845],[10.545,-66.845],[10.545,-66.885]]},
+  quebrada:{center:[10.495,-66.910],poly:[[10.480,-66.930],[10.480,-66.890],[10.510,-66.890],[10.510,-66.930]]},
+  seguro:{center:[10.485,-66.855],poly:[[10.470,-66.875],[10.470,-66.835],[10.500,-66.835],[10.500,-66.875]]}
+};
+
+// Draw all zone outlines
+Object.entries(ZONES).forEach(([id,z])=>{
+  const c=ZONE_COLORS[id]||'#888';
+  L.polygon(z.poly,{color:c,fillColor:c,fillOpacity:.07,weight:1,dashArray:'5 4',opacity:.5})
+   .addTo(map)
+   .on('click',()=>selectZone(id));
+});
+
+let curPoly=null, curMark=null;
+
+// ── RADIO SYNC ────────────────────────────────────────────
+function selectZone(id){
+  document.querySelectorAll('.zcard').forEach(c=>c.classList.remove('sel'));
+  const el=document.getElementById('z-'+id);
+  if(el){el.classList.add('sel');el.querySelector('input').checked=true;}
+}
+function selectClima(id){
+  document.querySelectorAll('.cc').forEach(c=>c.classList.remove('sel'));
+  const el=document.getElementById('c-'+id);
+  if(el){el.classList.add('sel');el.querySelector('input').checked=true;}
+}
+document.querySelectorAll('.zcard').forEach(c=>{
+  c.addEventListener('click',()=>{
+    const v=c.querySelector('input').value;
+    selectZone(v);
+    // Fly to zone
+    const z=ZONES[v];
+    if(z) map.flyTo(z.center,13,{duration:.9});
+  });
+});
+document.querySelectorAll('.cc').forEach(c=>{
+  c.addEventListener('click',()=>selectClima(c.querySelector('input').value));
+});
+
+// ── ANALYZE ───────────────────────────────────────────────
+const ICONS={CRITICO:'🚨',ALTO:'⚠️',MODERADO:'🔶',BAJO:'✅'};
+const LABELS={CRITICO:'CRÍTICO',ALTO:'ALTO',MODERADO:'MODERADO',BAJO:'BAJO'};
+
+document.getElementById('btnAnalizar').addEventListener('click',async()=>{
+  const zona =(document.querySelector('input[name="zona"]:checked')||{value:'valle_central'}).value;
+  const clima=(document.querySelector('input[name="clima"]:checked')||{value:'moderado'}).value;
+
+  const btn=document.getElementById('btnAnalizar');
+  const ov=document.getElementById('overlay');
+  btn.disabled=true; ov.classList.remove('hidden');
+
+  try{
+    const res=await fetch('/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({zona,clima})
+    });
+    const txt=await res.text();
+    let d;
+    try{d=JSON.parse(txt);}catch(e){throw new Error('Respuesta no valida: '+txt.slice(0,80));}
+    if(!d.ok) throw new Error(d.error||'Error del servidor');
+    renderResult(d);
+    renderMap(d);
+  }catch(err){
+    showToast('❌','Error al analizar',err.message,7000);
+    console.error(err);
+  }finally{
+    btn.disabled=false; ov.classList.add('hidden');
+  }
+});
+
+function renderResult(d){
+  const col=d.color, ico=ICONS[d.nivel]||'⚠️', lbl=LABELS[d.nivel]||d.nivel;
+  document.getElementById('rbar').style.background=col;
+  document.getElementById('rico').textContent=ico;
+  document.getElementById('rnivel').textContent='NIVEL '+lbl;
+  document.getElementById('rnivel').style.color=col;
+  document.getElementById('rzona').textContent=d.nombre;
+  document.getElementById('rprob').textContent=d.prob+'%';
+  document.getElementById('rprob').style.color=col;
+  document.getElementById('rfill').style.width=d.prob+'%';
+  document.getElementById('rfill').style.background=col;
+  document.getElementById('ratext').textContent=d.accion;
+  document.getElementById('raccion').style.borderColor=col;
+  document.getElementById('rtexto').textContent=d.texto;
+  document.getElementById('rmetodo').textContent=d.metodo;
+  document.getElementById('rhora').textContent=d.hora;
+  document.getElementById('resultSec').style.display='block';
+}
+
+function renderMap(d){
+  if(curPoly){map.removeLayer(curPoly);curPoly=null;}
+  if(curMark){map.removeLayer(curMark);curMark=null;}
+
+  curPoly=L.polygon(d.poly,{color:darken(d.color),fillColor:d.color,fillOpacity:.42,weight:3}).addTo(map);
+
+  // Pulse
+  let n=0,iv=setInterval(()=>{
+    curPoly&&curPoly.setStyle({fillOpacity:n++%2?0.15:0.42});
+    if(n>6){clearInterval(iv);curPoly&&curPoly.setStyle({fillOpacity:.42});}
+  },350);
+
+  const lbl=LABELS[d.nivel]||d.nivel, ico=ICONS[d.nivel]||'⚠️';
+  const mIco=L.divIcon({
+    className:'',
+    html:`<div style="width:42px;height:42px;border-radius:50%;background:${d.color};border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:0 0 0 4px ${d.color}55,0 3px 14px rgba(0,0,0,.55)">${ico}</div>`,
+    iconSize:[42,42],iconAnchor:[21,21]
+  });
+  curMark=L.marker(d.center,{icon:mIco}).addTo(map)
+    .bindPopup(`<b style="font-size:14px">${ico} ${lbl}</b><br><span style="color:#aaa">${d.nombre}</span><br><span style="font-size:20px;font-weight:700;color:${d.color}">${d.prob}%</span><br><small style="color:#ccc">${d.accion}</small><br><small style="color:#888">${d.hora}</small>`,{maxWidth:230})
+    .openPopup();
+
+  map.flyTo(d.center,13,{duration:1.1});
+  showToast(ico, d.nombre+' — '+lbl+' ('+d.prob+'%)', d.accion, 6000);
+}
+
+function showToast(ico,title,sub,ms){
+  document.getElementById('tIco').textContent=ico;
+  document.getElementById('tTitle').textContent=title;
+  document.getElementById('tSub').textContent=sub;
+  const t=document.getElementById('toast');
+  t.classList.remove('hidden');
+  clearTimeout(window._tt);
+  window._tt=setTimeout(()=>t.classList.add('hidden'),ms||5000);
+}
+
+function darken(hex){
+  const r=Math.max(0,parseInt(hex.slice(1,3),16)-40);
+  const g=Math.max(0,parseInt(hex.slice(3,5),16)-40);
+  const b=Math.max(0,parseInt(hex.slice(5,7),16)-40);
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+// ── CLOCK ─────────────────────────────────────────────────
+(function tick(){
+  const e=document.getElementById('clock');
+  if(e) e.textContent=new Date().toLocaleTimeString('es-VE',{hour12:false});
+  setTimeout(tick,1000);
+})();
+
+// ── PING on load to confirm server is alive ───────────────
+fetch('/ping').then(r=>r.json()).then(d=>console.log('[PING]',d)).catch(e=>console.error('[PING FAIL]',e));
+</script>
 </body>
 </html>
