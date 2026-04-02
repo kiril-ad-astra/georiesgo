@@ -67,7 +67,7 @@ RISK_COLORS = {
 
 # ─── Intentar cargar modelo CNN-LSTM ──────────────────────────────────────────
 model = None
-using_real_model = False
+using_real_model = True
 
 def load_model():
     global model, using_real_model
