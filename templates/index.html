@@ -34,7 +34,7 @@
       </div>
     </div>
     <div class="header-status">
-      <div class="status-pill {% if using_real_model %}status-real{% else %}status-sim{% endif %}">
+      <div class="status-pill {{ 'status-real' if using_real_model else 'status-sim' }}">
         <span class="status-dot"></span>
         {% if using_real_model %}CNN-LSTM ACTIVO{% else %}MODO SIMULACIÓN{% endif %}
       </div>
